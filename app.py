@@ -873,7 +873,15 @@ if st.session_state.generated_variations:
         "## Your LinkedIn Posts"
     )
 
-    variations = st.session_state.generated_variations
+    # FIX: generated_variations is the full {"variations": [...]}
+    # dict returned by generate_posts(). We need the inner list,
+    # not the dict itself, otherwise zip() iterates over the
+    # dict's keys (just the string "variations") and .get() then
+    # fails on a plain string.
+    variations = st.session_state.generated_variations.get(
+        "variations",
+        []
+    )
 
     tabs = st.tabs(
         [
