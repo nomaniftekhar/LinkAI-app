@@ -489,6 +489,93 @@ st.write("")
 
 
 # ============================================================
+# TONE / STYLE GUIDES
+# ============================================================
+#
+# The previous version of this app only handed the model a
+# label like "Tone: Confident" or "Writing Style: Storytelling"
+# and then told it TONE was "the single most important
+# instruction". That caused two problems:
+#
+#   1. Tone dominated everything, so changing Writing Style
+#      alone barely moved the output.
+#   2. Several Tone and Writing Style labels overlap in meaning
+#      ("Natural & Human" appears in both lists, "Confident"
+#      vs. "Confident & Professional"), so the model had no way
+#      to tell they were supposed to be two independent axes.
+#
+# The dictionaries below give the model concrete, mechanical
+# instructions (sentence length, pacing, structure) for each
+# option instead of a vague label, and the two axes are now
+# treated as co-equal and independent: TONE = attitude/voice,
+# STYLE = structure/composition.
+# ============================================================
+
+TONE_GUIDES = {
+    "Natural & Human": (
+        "Casual and conversational, like talking to a friend. "
+        "Contractions are welcome. No corporate polish."
+    ),
+    "Professional": (
+        "Polished and workplace-appropriate. Composed and "
+        "understated rather than flashy."
+    ),
+    "Confident": (
+        "Assertive, declarative sentences. Avoid hedging words "
+        "like 'maybe', 'I think', or 'kind of'."
+    ),
+    "Friendly": (
+        "Warm and approachable. Speak directly to the reader "
+        "using 'you' where natural."
+    ),
+    "Thoughtful": (
+        "Reflective and measured. Favors nuance over bold "
+        "claims; slower, more considered pacing."
+    ),
+    "Technical": (
+        "Precise and matter-of-fact. Leads with a specific "
+        "technical observation or detail rather than an emotion."
+    ),
+}
+
+STYLE_GUIDES = {
+    "Natural & Human": (
+        "Simple sentence structures and plain vocabulary. Reads "
+        "like a real person typed it in one sitting, not a "
+        "polished draft."
+    ),
+    "Storytelling": (
+        "Structure the post as a mini narrative: set a moment "
+        "in time, build to a turning point or tension, then "
+        "resolve it. Use concrete scene details, not abstractions."
+    ),
+    "Bold & Punchy": (
+        "Short, punchy sentences and sentence fragments. Strong "
+        "verbs. Minimal connecting words. High-energy pacing — "
+        "avoid long, winding sentences."
+    ),
+    "Technical & Insightful": (
+        "Lead with a specific technical detail, number, or "
+        "mechanism, then unpack why it matters. Precise, "
+        "domain-accurate language."
+    ),
+    "Personal & Reflective": (
+        "First-person introspection. Explore what was learned "
+        "or felt. Slower pacing, more internal than external."
+    ),
+    "Minimal & Clean": (
+        "Very short paragraphs (1-2 sentences each) with heavy "
+        "whitespace. No filler words. Every line earns its place."
+    ),
+    "Confident & Professional": (
+        "Structured like a well-organized brief: a clear point, "
+        "clear supporting evidence, a clear close. Declarative, "
+        "no rambling."
+    ),
+}
+
+
+# ============================================================
 # GENERATION FUNCTIONS
 # ============================================================
 
@@ -592,25 +679,31 @@ def generate_post(
 
     word_min, word_max = parse_word_range(post_length)
 
+    tone_guide = TONE_GUIDES.get(tone, "")
+    style_guide = STYLE_GUIDES.get(writing_style, "")
+
     mandatory_settings = f"""
 MANDATORY USER SETTINGS (highest priority — these define how
 the post must sound and read):
 
-- TONE: {tone}
-  The entire post — including the hook — must sound like this
-  tone. This is the single most important instruction. If the
-  tone is "Confident", the hook should feel assertive and
-  certain. If it's "Thoughtful", the hook should feel reflective
-  and measured. If it's "Friendly", the hook should feel warm
-  and approachable. If it's "Technical", the hook should lead
-  with a precise, technical observation. Do not default to a
-  generic "confident professional" voice regardless of what
-  TONE actually says — rewrite the hook and body specifically
-  for this tone every time.
+TONE and WRITING STYLE are two SEPARATE, EQUALLY IMPORTANT axes.
+Do not let one override the other, and do not collapse them into
+a single generic voice:
 
-- WRITING STYLE: {writing_style}
-  Apply this style consistently across the whole post
-  (sentence rhythm, structure, vocabulary choices).
+- TONE = {tone}
+  This controls the ATTITUDE / EMOTIONAL COLORING of the writing.
+  Concretely: {tone_guide}
+
+- WRITING STYLE = {writing_style}
+  This controls the STRUCTURE / COMPOSITION of the writing —
+  sentence length, pacing, paragraph rhythm, how the post is
+  built. Concretely: {style_guide}
+
+  If only WRITING STYLE changes between two generations (even
+  with the same TONE and same topic), the sentence structure,
+  pacing, and paragraph rhythm MUST be clearly different. A
+  reader should be able to tell the style apart without being
+  told what it is.
 
 - TARGET AUDIENCE: {target_audience}
   Choose vocabulary, examples, and framing that speak directly
@@ -663,9 +756,10 @@ HOOK RULES:
 The first 1–2 lines are extremely important — they decide
 whether someone keeps reading.
 
-The hook must be specific, interesting, and shaped by the
-TONE setting above. Depending on tone, draw on approaches
-such as:
+The hook must be specific, interesting, and shaped by BOTH the
+TONE and WRITING STYLE settings above — tone sets the attitude,
+style sets the structure. Depending on those settings, draw on
+approaches such as:
 
 - curiosity
 - a surprising realization
@@ -678,8 +772,8 @@ such as:
 - a direct question
 - a challenge
 
-Pick whichever approach best matches the requested TONE — do
-not default to the same hook style every time.
+Pick whichever approach best matches the requested TONE and
+WRITING STYLE — do not default to the same hook style every time.
 
 POST STRUCTURE:
 
@@ -864,9 +958,11 @@ CTA:
 
 REMEMBER:
 
-The hook must clearly reflect the requested TONE — rewrite
-it specifically for this tone rather than reusing a generic
-opening style.
+TONE and WRITING STYLE are independent settings. The hook and
+the overall structure must clearly reflect BOTH the requested
+TONE (attitude) and WRITING STYLE (sentence rhythm, pacing,
+structure) — rewrite from scratch for this exact combination
+rather than reusing a generic opening or structure.
 
 Do not invent information.
 """
