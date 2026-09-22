@@ -576,9 +576,73 @@ def validate_result(data):
     return True
 
 
-def generate_posts(user_prompt):
+def parse_word_range(post_length):
+    """
+    Extract a (min, max) word count tuple from the
+    post_length label, e.g. "Short — 80–120 words" -> (80, 120).
+    Falls back to a sane default if parsing fails.
+    """
 
-    system_prompt = """
+    numbers = re.findall(r"\d+", post_length)
+
+    if len(numbers) >= 2:
+        return int(numbers[0]), int(numbers[1])
+
+    return 150, 220
+
+
+def generate_posts(
+    user_prompt,
+    tone,
+    writing_style,
+    target_audience,
+    post_length,
+    use_emojis,
+    use_hashtags,
+    use_cta
+):
+
+    word_min, word_max = parse_word_range(post_length)
+
+    mandatory_settings = f"""
+MANDATORY USER SETTINGS (highest priority — these override
+any general stylistic assumption elsewhere in this prompt,
+including the tone implied by the "Scroll Stopper", "Human
+Story", or "Insight & Authority" variation descriptions below):
+
+- TONE: {tone}
+  Every variation must sound like this tone, even though the
+  three variations use different structures/hooks. The
+  structural approach (scroll stopper / human story / insight)
+  is about the STRUCTURE only, not the tone. Do not let the
+  variation's default persona override this tone.
+
+- WRITING STYLE: {writing_style}
+  Apply this style consistently across all three variations.
+
+- TARGET AUDIENCE: {target_audience}
+  Choose vocabulary, examples, and framing that speak directly
+  to this audience. A post for "Recruiters" should read
+  differently from one for "Developers" even with the same
+  underlying facts.
+
+- LENGTH: every single variation's "post" field MUST be
+  between {word_min} and {word_max} words. Count words before
+  finalizing your answer. Do not go noticeably over or under
+  this range in any of the three variations.
+
+- EMOJIS: {"Use emojis naturally where appropriate." if use_emojis else "Do NOT use any emojis, in any variation."}
+
+- HASHTAGS: {"Include 3-5 relevant hashtags at the end of each post." if use_hashtags else "Do NOT include hashtags in any variation."}
+
+- CTA: {"End each post with a natural, relevant call to action." if use_cta else "Do NOT include a call to action in any variation."}
+
+If you find yourself defaulting to a generic "confident
+professional" tone regardless of what TONE says above, that is
+a mistake — re-read the TONE setting and rewrite accordingly.
+"""
+
+    system_prompt = mandatory_settings + """
 You are LinkAI, an expert LinkedIn content writer.
 
 Your job is to transform the user's real information into
@@ -849,7 +913,16 @@ Do not invent information.
             "Creating 3 genuinely different LinkedIn posts..."
         ):
 
-            result = generate_posts(user_prompt)
+            result = generate_posts(
+                user_prompt,
+                tone,
+                writing_style,
+                target_audience,
+                post_length,
+                use_emojis,
+                use_hashtags,
+                use_cta
+            )
 
         if result:
 
