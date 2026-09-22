@@ -48,6 +48,15 @@ if "generated_post" not in st.session_state:
 if "last_topic" not in st.session_state:
     st.session_state.last_topic = ""
 
+if "generation_count" not in st.session_state:
+    # Bumped every time a new post is generated so the editable
+    # text_area below gets a fresh widget key. Without this,
+    # Streamlit ignores the `value=` argument on every run after
+    # the first (because the widget's key already exists in
+    # session_state), so the box silently keeps showing the very
+    # first generated post no matter what settings you change.
+    st.session_state.generation_count = 0
+
 
 # ============================================================
 # CUSTOM CSS
@@ -987,6 +996,11 @@ Do not invent information.
             st.session_state.generated_post = result
             st.session_state.last_topic = topic
 
+            # New post → new widget key, so the text_area below
+            # is forced to re-initialize with the new value
+            # instead of Streamlit reusing the stale old one.
+            st.session_state.generation_count += 1
+
             st.success(
                 "✓ Your LinkedIn post is ready!"
             )
@@ -1044,7 +1058,7 @@ if st.session_state.generated_post:
         "Edit your post",
         value=post,
         height=430,
-        key="post_editor",
+        key=f"post_editor_{st.session_state.generation_count}",
         label_visibility="visible"
     )
 
