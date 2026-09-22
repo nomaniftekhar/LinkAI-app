@@ -42,8 +42,8 @@ except Exception as e:
 # SESSION STATE
 # ============================================================
 
-if "generated_variations" not in st.session_state:
-    st.session_state.generated_variations = None
+if "generated_post" not in st.session_state:
+    st.session_state.generated_post = None
 
 if "last_topic" not in st.session_state:
     st.session_state.last_topic = ""
@@ -351,8 +351,8 @@ st.markdown(
         <h1>Write LinkedIn posts that <span>people actually read.</span></h1>
         <p>
             Turn your ideas, projects, achievements, and experiences
-            into natural LinkedIn posts with three genuinely different
-            writing approaches.
+            into a natural LinkedIn post with a strong, scroll-stopping
+            hook — shaped by the tone and style you choose.
         </p>
     </div>
     """,
@@ -540,38 +540,26 @@ def extract_json(text):
 
 
 def validate_result(data):
+    """
+    A valid result is a single object with a non-empty
+    "hook" and "post" string field.
+    """
 
     if not isinstance(data, dict):
         return False
 
-    if "variations" not in data:
-        return False
+    required = ["hook", "post"]
 
-    variations = data["variations"]
+    for key in required:
 
-    if not isinstance(variations, list):
-        return False
-
-    if len(variations) != 3:
-        return False
-
-    required = ["title", "hook", "post"]
-
-    for item in variations:
-
-        if not isinstance(item, dict):
+        if key not in data:
             return False
 
-        for key in required:
+        if not isinstance(data[key], str):
+            return False
 
-            if key not in item:
-                return False
-
-            if not isinstance(item[key], str):
-                return False
-
-            if not item[key].strip():
-                return False
+        if not data[key].strip():
+            return False
 
     return True
 
@@ -591,7 +579,7 @@ def parse_word_range(post_length):
     return 150, 220
 
 
-def generate_posts(
+def generate_post(
     user_prompt,
     tone,
     writing_style,
@@ -605,20 +593,24 @@ def generate_posts(
     word_min, word_max = parse_word_range(post_length)
 
     mandatory_settings = f"""
-MANDATORY USER SETTINGS (highest priority — these override
-any general stylistic assumption elsewhere in this prompt,
-including the tone implied by the "Scroll Stopper", "Human
-Story", or "Insight & Authority" variation descriptions below):
+MANDATORY USER SETTINGS (highest priority — these define how
+the post must sound and read):
 
 - TONE: {tone}
-  Every variation must sound like this tone, even though the
-  three variations use different structures/hooks. The
-  structural approach (scroll stopper / human story / insight)
-  is about the STRUCTURE only, not the tone. Do not let the
-  variation's default persona override this tone.
+  The entire post — including the hook — must sound like this
+  tone. This is the single most important instruction. If the
+  tone is "Confident", the hook should feel assertive and
+  certain. If it's "Thoughtful", the hook should feel reflective
+  and measured. If it's "Friendly", the hook should feel warm
+  and approachable. If it's "Technical", the hook should lead
+  with a precise, technical observation. Do not default to a
+  generic "confident professional" voice regardless of what
+  TONE actually says — rewrite the hook and body specifically
+  for this tone every time.
 
 - WRITING STYLE: {writing_style}
-  Apply this style consistently across all three variations.
+  Apply this style consistently across the whole post
+  (sentence rhythm, structure, vocabulary choices).
 
 - TARGET AUDIENCE: {target_audience}
   Choose vocabulary, examples, and framing that speak directly
@@ -626,42 +618,35 @@ Story", or "Insight & Authority" variation descriptions below):
   differently from one for "Developers" even with the same
   underlying facts.
 
-- LENGTH: every single variation's "post" field MUST be
-  between {word_min} and {word_max} words. Count words before
-  finalizing your answer. Do not go noticeably over or under
-  this range in any of the three variations.
+- LENGTH: the "post" field MUST be between {word_min} and
+  {word_max} words. Count words before finalizing your answer.
 
-- EMOJIS: {"Use emojis naturally where appropriate." if use_emojis else "Do NOT use any emojis, in any variation."}
+- EMOJIS: {"Use emojis naturally where appropriate." if use_emojis else "Do NOT use any emojis."}
 
-- HASHTAGS: {"Include 3-5 relevant hashtags at the end of each post." if use_hashtags else "Do NOT include hashtags in any variation."}
+- HASHTAGS: {"Include 3-5 relevant hashtags at the end of the post." if use_hashtags else "Do NOT include hashtags."}
 
-- CTA: {"End each post with a natural, relevant call to action." if use_cta else "Do NOT include a call to action in any variation."}
-
-If you find yourself defaulting to a generic "confident
-professional" tone regardless of what TONE says above, that is
-a mistake — re-read the TONE setting and rewrite accordingly.
+- CTA: {"End the post with a natural, relevant call to action." if use_cta else "Do NOT include a call to action."}
 """
 
     system_prompt = mandatory_settings + """
 You are LinkAI, an expert LinkedIn content writer.
 
 Your job is to transform the user's real information into
-high-quality LinkedIn posts.
+ONE high-quality LinkedIn post with a strong, scroll-stopping
+hook.
 
 IMPORTANT RULES:
 
 1. Return ONLY valid JSON.
 2. Do NOT use Markdown code fences.
 3. Do NOT write explanations before or after the JSON.
-4. Generate EXACTLY three variations.
-5. The three variations must be genuinely different.
-6. Do not simply rewrite the same post three times.
-7. Do not invent achievements, statistics, results, companies,
+4. Do not invent achievements, statistics, results, companies,
    technologies, experiences, awards, or facts.
-8. Only use information provided by the user.
-9. Keep the writing natural and human.
-10. Avoid excessive corporate buzzwords.
-11. Avoid generic AI-generated openings.
+5. Only use information provided by the user.
+6. Keep the writing natural and human — never sound like it
+   was written by an AI.
+7. Avoid excessive corporate buzzwords.
+8. Avoid generic AI-generated openings.
 
 NEVER begin with generic phrases such as:
 
@@ -675,71 +660,33 @@ NEVER begin with generic phrases such as:
 
 HOOK RULES:
 
-The first 1–2 lines are extremely important.
+The first 1–2 lines are extremely important — they decide
+whether someone keeps reading.
 
-Hooks should be specific, interesting, and relevant.
-
-Possible hook approaches:
+The hook must be specific, interesting, and shaped by the
+TONE setting above. Depending on tone, draw on approaches
+such as:
 
 - curiosity
-- surprising realization
-- strong statement
-- problem
-- contrast
-- personal realization
-- technical insight
-- unexpected lesson
-- question
-- challenge
+- a surprising realization
+- a strong, confident statement
+- a problem or tension
+- a contrast
+- a personal realization
+- a technical insight
+- an unexpected lesson
+- a direct question
+- a challenge
 
-Do NOT make all three hooks similar.
+Pick whichever approach best matches the requested TONE — do
+not default to the same hook style every time.
 
-VARIATION 1 — SCROLL STOPPER:
+POST STRUCTURE:
 
-Create a high-impact LinkedIn post.
-
-Use a strong curiosity-driven, bold, surprising,
-problem-based, or contrast-based opening.
-
-Keep the pacing fast.
-
-Short paragraphs.
-
-Make the first two lines strong enough to encourage
-someone to stop scrolling.
-
-VARIATION 2 — HUMAN STORY:
-
-Write like a real person sharing an experience.
-
-Structure:
-
-Experience
-→ Challenge
-→ What happened
-→ Realization
-→ Lesson
-
-Use conversational language.
-
-Do not make it sound like a corporate announcement.
-
-VARIATION 3 — INSIGHT & AUTHORITY:
-
-Write from a professional or technical perspective.
-
-Start with an observation, insight, or lesson.
-
-Explain why the topic matters.
-
-Provide useful value to the reader.
-
-Do not make unsupported claims.
-
-WRITING STYLE:
-
-Adapt the writing to the requested style while keeping
-the three structural approaches different.
+Write like a real person, not a press release. Ground the
+post in the user's actual information, build naturally from
+the hook into the substance, and close with a clear takeaway
+(and a CTA only if requested).
 
 LINKEDIN FORMATTING:
 
@@ -749,32 +696,11 @@ Use whitespace.
 
 Avoid huge blocks of text.
 
-Use emojis only if requested.
-
-Use hashtags only if requested.
-
-Use a CTA only if requested.
-
 OUTPUT FORMAT:
 
 {
-  "variations": [
-    {
-      "title": "🔥 Scroll Stopper",
-      "hook": "Exact first 1–2 lines",
-      "post": "Complete LinkedIn post"
-    },
-    {
-      "title": "📖 Human Story",
-      "hook": "Exact first 1–2 lines",
-      "post": "Complete LinkedIn post"
-    },
-    {
-      "title": "💡 Insight & Authority",
-      "hook": "Exact first 1–2 lines",
-      "post": "Complete LinkedIn post"
-    }
-  ]
+  "hook": "Exact first 1–2 lines of the post",
+  "post": "The complete LinkedIn post, including the hook at the start"
 }
 """
 
@@ -797,7 +723,7 @@ OUTPUT FORMAT:
 
             temperature=0.9,
 
-            max_tokens=3500
+            max_tokens=1500
         )
 
         raw_response = response.choices[0].message.content
@@ -844,7 +770,7 @@ OUTPUT FORMAT:
 # ============================================================
 
 generate = st.button(
-    "✦ Generate 3 Unique Variations",
+    "✦ Generate LinkedIn Post",
     use_container_width=True
 )
 
@@ -860,7 +786,7 @@ if generate:
     else:
 
         user_prompt = f"""
-Create three LinkedIn posts using the information below.
+Create one LinkedIn post using the information below.
 
 TOPIC:
 {topic}
@@ -897,23 +823,18 @@ CTA:
 
 REMEMBER:
 
-The three posts must feel like they were written
-from three different creative directions.
-
-Do not repeat the same hook.
-
-Do not simply replace a few words between variations.
-
-The first two lines of each post must be different.
+The hook must clearly reflect the requested TONE — rewrite
+it specifically for this tone rather than reusing a generic
+opening style.
 
 Do not invent information.
 """
 
         with st.spinner(
-            "Creating 3 genuinely different LinkedIn posts..."
+            "Writing your LinkedIn post..."
         ):
 
-            result = generate_posts(
+            result = generate_post(
                 user_prompt,
                 tone,
                 writing_style,
@@ -926,210 +847,176 @@ Do not invent information.
 
         if result:
 
-            st.session_state.generated_variations = result
+            st.session_state.generated_post = result
             st.session_state.last_topic = topic
 
             st.success(
-                "✓ Three unique LinkedIn posts generated!"
+                "✓ Your LinkedIn post is ready!"
             )
 
 
 # ============================================================
-# RESULTS
+# RESULT
 # ============================================================
 
-if st.session_state.generated_variations:
+if st.session_state.generated_post:
 
     st.markdown("---")
 
     st.markdown(
-        "## Your LinkedIn Posts"
+        "## Your LinkedIn Post"
     )
 
-    # FIX: generated_variations is the full {"variations": [...]}
-    # dict returned by generate_posts(). We need the inner list,
-    # not the dict itself, otherwise zip() iterates over the
-    # dict's keys (just the string "variations") and .get() then
-    # fails on a plain string.
-    variations = st.session_state.generated_variations.get(
-        "variations",
-        []
-    )
+    result = st.session_state.generated_post
 
-    tabs = st.tabs(
-        [
-            "🔥 Scroll Stopper",
-            "📖 Human Story",
-            "💡 Insight & Authority"
-        ]
-    )
+    hook = result.get("hook", "")
+    post = result.get("post", "")
 
-    for index, (tab, variation) in enumerate(
-        zip(tabs, variations)
-    ):
+    # ------------------------------------------------
+    # HOOK
+    # ------------------------------------------------
 
-        with tab:
+    safe_hook = html.escape(hook)
 
-            title = variation.get(
-                "title",
-                f"Variation {index + 1}"
-            )
+    st.markdown(
+        f"""
+        <div class="post-card">
 
-            hook = variation.get(
-                "hook",
-                ""
-            )
+            <div class="hook-box">
 
-            post = variation.get(
-                "post",
-                ""
-            )
-
-            # ------------------------------------------------
-            # HOOK
-            # ------------------------------------------------
-
-            safe_hook = html.escape(hook)
-
-            st.markdown(
-                f"""
-                <div class="post-card">
-
-                    <div class="hook-box">
-
-                        <div class="hook-label">
-                            Strong Hook
-                        </div>
-
-                        <div class="hook-text">
-                            {safe_hook}
-                        </div>
-
-                    </div>
-
+                <div class="hook-label">
+                    Strong Hook
                 </div>
-                """,
-                unsafe_allow_html=True
-            )
 
-            # ------------------------------------------------
-            # EDITABLE POST
-            # ------------------------------------------------
-
-            edited_post = st.text_area(
-                "Edit your post",
-                value=post,
-                height=430,
-                key=f"post_editor_{index}",
-                label_visibility="visible"
-            )
-
-            # ------------------------------------------------
-            # STATS
-            # ------------------------------------------------
-
-            word_count = len(
-                edited_post.split()
-            )
-
-            character_count = len(
-                edited_post
-            )
-
-            col1, col2, col3 = st.columns(3)
-
-            with col1:
-
-                st.metric(
-                    "Words",
-                    word_count
-                )
-
-            with col2:
-
-                st.metric(
-                    "Characters",
-                    character_count
-                )
-
-            with col3:
-
-                if character_count <= 3000:
-                    status = "Good length"
-                else:
-                    status = "Long post"
-
-                st.metric(
-                    "Status",
-                    status
-                )
-
-            # ------------------------------------------------
-            # COPY / DOWNLOAD
-            # ------------------------------------------------
-
-            col1, col2 = st.columns(2)
-
-            with col1:
-
-                st.code(
-                    edited_post,
-                    language=None
-                )
-
-            with col2:
-
-                st.download_button(
-                    label="⬇️ Download Post",
-                    data=edited_post,
-                    file_name=f"linkedin_post_{index + 1}.txt",
-                    mime="text/plain",
-                    use_container_width=True,
-                    key=f"download_{index}"
-                )
-
-            # ------------------------------------------------
-            # LINKEDIN PREVIEW
-            # ------------------------------------------------
-
-            st.markdown(
-                "### LinkedIn Preview"
-            )
-
-            safe_post = html.escape(
-                edited_post
-            )
-
-            st.markdown(
-                f"""
-                <div class="linkedin-preview">
-
-                    <div class="linkedin-profile">
-
-                        <div class="profile-avatar">
-                            N
-                        </div>
-
-                        <div>
-                            <div class="profile-name">
-                                Noman Iftekhar
-                            </div>
-
-                            <div class="profile-role">
-                                Mechatronics Engineering • AI • Computer Vision
-                            </div>
-                        </div>
-
-                    </div>
-
-                    <div class="preview-content">
-                        {safe_post}
-                    </div>
-
+                <div class="hook-text">
+                    {safe_hook}
                 </div>
-                """,
-                unsafe_allow_html=True
-            )
+
+            </div>
+
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+
+    # ------------------------------------------------
+    # EDITABLE POST
+    # ------------------------------------------------
+
+    edited_post = st.text_area(
+        "Edit your post",
+        value=post,
+        height=430,
+        key="post_editor",
+        label_visibility="visible"
+    )
+
+    # ------------------------------------------------
+    # STATS
+    # ------------------------------------------------
+
+    word_count = len(
+        edited_post.split()
+    )
+
+    character_count = len(
+        edited_post
+    )
+
+    col1, col2, col3 = st.columns(3)
+
+    with col1:
+
+        st.metric(
+            "Words",
+            word_count
+        )
+
+    with col2:
+
+        st.metric(
+            "Characters",
+            character_count
+        )
+
+    with col3:
+
+        if character_count <= 3000:
+            status = "Good length"
+        else:
+            status = "Long post"
+
+        st.metric(
+            "Status",
+            status
+        )
+
+    # ------------------------------------------------
+    # COPY / DOWNLOAD
+    # ------------------------------------------------
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+
+        st.code(
+            edited_post,
+            language=None
+        )
+
+    with col2:
+
+        st.download_button(
+            label="⬇️ Download Post",
+            data=edited_post,
+            file_name="linkedin_post.txt",
+            mime="text/plain",
+            use_container_width=True,
+            key="download_post"
+        )
+
+    # ------------------------------------------------
+    # LINKEDIN PREVIEW
+    # ------------------------------------------------
+
+    st.markdown(
+        "### LinkedIn Preview"
+    )
+
+    safe_post = html.escape(
+        edited_post
+    )
+
+    st.markdown(
+        f"""
+        <div class="linkedin-preview">
+
+            <div class="linkedin-profile">
+
+                <div class="profile-avatar">
+                    N
+                </div>
+
+                <div>
+                    <div class="profile-name">
+                        Noman Iftekhar
+                    </div>
+
+                    <div class="profile-role">
+                        Mechatronics Engineering • AI • Computer Vision
+                    </div>
+                </div>
+
+            </div>
+
+            <div class="preview-content">
+                {safe_post}
+            </div>
+
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
 
 
 # ============================================================
@@ -1142,15 +1029,12 @@ else:
         """
         <div class="post-card" style="text-align:center; padding:3rem;">
 
-            <h3>✦ Your posts will appear here</h3>
+            <h3>✦ Your post will appear here</h3>
 
             <p style="color:#94a3b8;">
-                Enter a topic above and generate three different
-                LinkedIn post styles.
-            </p>
-
-            <p style="color:#64748b; font-size:0.85rem;">
-                Scroll Stopper • Human Story • Insight & Authority
+                Enter a topic above and generate a LinkedIn post
+                with a strong hook, shaped by your chosen tone
+                and style.
             </p>
 
         </div>
