@@ -723,7 +723,48 @@ OUTPUT FORMAT:
 
             temperature=0.9,
 
-            max_tokens=1500
+            max_tokens=2500,
+
+            # Hide the model's internal chain-of-thought so only
+            # the final answer comes back in message.content —
+            # without this, gpt-oss-120b (a reasoning model) can
+            # leak reasoning text or <think> tags into the
+            # response, or run out of tokens before finishing.
+            reasoning_format="hidden",
+
+            # Force the model to emit exactly this JSON shape
+            # (Groq structured outputs, strict mode, supported on
+            # gpt-oss-120b). This is far more reliable than
+            # hoping the model wraps its answer in clean JSON.
+            response_format={
+                "type": "json_schema",
+                "json_schema": {
+                    "name": "linkedin_post",
+                    "strict": True,
+                    "schema": {
+                        "type": "object",
+                        "properties": {
+                            "hook": {
+                                "type": "string",
+                                "description": (
+                                    "The exact first 1-2 lines "
+                                    "of the post."
+                                )
+                            },
+                            "post": {
+                                "type": "string",
+                                "description": (
+                                    "The complete LinkedIn post, "
+                                    "including the hook at the "
+                                    "start."
+                                )
+                            }
+                        },
+                        "required": ["hook", "post"],
+                        "additionalProperties": False
+                    }
+                }
+            }
         )
 
         raw_response = response.choices[0].message.content
