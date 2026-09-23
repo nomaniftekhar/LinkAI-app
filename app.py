@@ -336,16 +336,13 @@ st.markdown(
 # ============================================================
 
 st.markdown(
-    """
-    <div class="linkai-header">
-        <div class="brand">Link<span>AI</span></div>
-
-        <div class="online-status">
-            <div class="online-dot"></div>
-            Groq AI Online
-        </div>
-    </div>
-    """,
+    '<div class="linkai-header">'
+    '<div class="brand">Link<span>AI</span></div>'
+    '<div class="online-status">'
+    '<div class="online-dot"></div>'
+    'Groq AI Online'
+    '</div>'
+    '</div>',
     unsafe_allow_html=True
 )
 
@@ -355,16 +352,12 @@ st.markdown(
 # ============================================================
 
 st.markdown(
-    """
-    <div class="hero">
-        <h1>Write LinkedIn posts that <span>people actually read.</span></h1>
-        <p>
-            Turn your ideas, projects, achievements, and experiences
-            into a natural LinkedIn post with a strong, scroll-stopping
-            hook — shaped by the tone and style you choose.
-        </p>
-    </div>
-    """,
+    '<div class="hero">'
+    '<h1>Write LinkedIn posts that <span>people actually read.</span></h1>'
+    '<p>Turn your ideas, projects, achievements, and experiences '
+    'into a natural LinkedIn post with a strong, scroll-stopping '
+    'hook — shaped by the tone and style you choose.</p>'
+    '</div>',
     unsafe_allow_html=True
 )
 
@@ -826,7 +819,24 @@ OUTPUT FORMAT:
 
             temperature=0.9,
 
-            max_tokens=2500,
+            # Raised from 2500: gpt-oss-120b is a reasoning model,
+            # and even with reasoning_format="hidden" its hidden
+            # chain-of-thought tokens still count against this
+            # budget. A longer/more detailed system prompt (like
+            # the tone/style guides above) makes it "think" more,
+            # so a low ceiling here can get eaten by hidden
+            # reasoning before the actual JSON post is written,
+            # producing a "max completion tokens reached before
+            # generating a valid document" error.
+            max_tokens=4096,
+
+            # Cap reasoning effort so the model doesn't spend an
+            # unpredictable (and sometimes large) number of hidden
+            # tokens "thinking" about a LinkedIn post — this is a
+            # simple generation task, not one that benefits from
+            # deep reasoning, and keeping this low leaves more of
+            # the token budget for the actual output.
+            reasoning_effort="low",
 
             # Hide the model's internal chain-of-thought so only
             # the final answer comes back in message.content —
@@ -1027,26 +1037,15 @@ if st.session_state.generated_post:
     # HOOK
     # ------------------------------------------------
 
-    safe_hook = html.escape(hook)
+    safe_hook = html.escape(hook).replace("\n", "<br>")
 
     st.markdown(
-        f"""
-        <div class="post-card">
-
-            <div class="hook-box">
-
-                <div class="hook-label">
-                    Strong Hook
-                </div>
-
-                <div class="hook-text">
-                    {safe_hook}
-                </div>
-
-            </div>
-
-        </div>
-        """,
+        '<div class="post-card">'
+        '<div class="hook-box">'
+        '<div class="hook-label">Strong Hook</div>'
+        f'<div class="hook-text">{safe_hook}</div>'
+        '</div>'
+        '</div>',
         unsafe_allow_html=True
     )
 
@@ -1134,38 +1133,19 @@ if st.session_state.generated_post:
         "### LinkedIn Preview"
     )
 
-    safe_post = html.escape(
-        edited_post
-    )
+    safe_post = html.escape(edited_post).replace("\n", "<br>")
 
     st.markdown(
-        f"""
-        <div class="linkedin-preview">
-
-            <div class="linkedin-profile">
-
-                <div class="profile-avatar">
-                    N
-                </div>
-
-                <div>
-                    <div class="profile-name">
-                        Noman Iftekhar
-                    </div>
-
-                    <div class="profile-role">
-                        Mechatronics Engineering • AI • Computer Vision
-                    </div>
-                </div>
-
-            </div>
-
-            <div class="preview-content">
-                {safe_post}
-            </div>
-
-        </div>
-        """,
+        '<div class="linkedin-preview">'
+        '<div class="linkedin-profile">'
+        '<div class="profile-avatar">N</div>'
+        '<div>'
+        '<div class="profile-name">Noman Iftekhar</div>'
+        '<div class="profile-role">Mechatronics Engineering • AI • Computer Vision</div>'
+        '</div>'
+        '</div>'
+        f'<div class="preview-content">{safe_post}</div>'
+        '</div>',
         unsafe_allow_html=True
     )
 
@@ -1177,19 +1157,14 @@ if st.session_state.generated_post:
 else:
 
     st.markdown(
-        """
-        <div class="post-card" style="text-align:center; padding:3rem;">
-
-            <h3>✦ Your post will appear here</h3>
-
-            <p style="color:#94a3b8;">
-                Enter a topic above and generate a LinkedIn post
-                with a strong hook, shaped by your chosen tone
-                and style.
-            </p>
-
-        </div>
-        """,
+        '<div class="post-card" style="text-align:center; padding:3rem;">'
+        '<h3>✦ Your post will appear here</h3>'
+        '<p style="color:#94a3b8;">'
+        'Enter a topic above and generate a LinkedIn post '
+        'with a strong hook, shaped by your chosen tone '
+        'and style.'
+        '</p>'
+        '</div>',
         unsafe_allow_html=True
     )
 
